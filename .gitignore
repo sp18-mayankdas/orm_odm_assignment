@@ -1,4 +1,6 @@
-.env 
-package-lock.json
-scripts/
+.env
 config/
+node_modules/
+scripts/
+src/config
+package-lock.json

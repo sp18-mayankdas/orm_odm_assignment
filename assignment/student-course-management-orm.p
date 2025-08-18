@@ -3,15 +3,15 @@
 ## TASK 1: Student-Address Management (One-to-One)
 
 // One-to-One relationship between Student and Address
-student.hasOne(address, {
-  foreignKey: 'student_id',
-  as: 'address',
+address.hasOne(student, {
+  foreignKey: 'address_id',
+  as: 'student',
   onDelete: 'CASCADE',
 });
 
-address.belongsTo(student, {
-  foreignKey: 'student_id',
-  as: 'student',
+student.belongsTo(address, {
+  foreignKey: 'address_id',
+  as: 'address',
 });
 
 ## TASK 2: Course Management (One-to-Many)

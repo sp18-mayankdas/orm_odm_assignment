@@ -1,5 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const routes = require('./src/routes/index.js')
+
 
 // Load environment variables
 dotenv.config();
@@ -12,15 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Basic route
-app.get('/', (req, res) => {
-  res.json({
-    message: 'ORM & ODM Lecture Demo Server',
-    endpoints: {
-      postgres: '/api/postgres',
-      mongodb: '/api/mongodb'
-    }
-  });
-});
+app.use('/api',routes);
 
 // Health check route
 app.get('/health', (req, res) => {

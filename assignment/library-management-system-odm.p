@@ -1,6 +1,55 @@
 # Task 1: Member and Profile Management (One-to-One)
 
-- Allow members to create and update their profiles.
+// Create or update profile
+
+// Create Member Profile
+async function create(req, res) {
+  try {
+    const memberId = req.user.id;
+  
+    const existingProfile = await MemberProfile.findOne({ member: memberId });
+    if (existingProfile) {
+      return res.status(400).json({ success: false, message: 'Profile already exists for this member.' });
+    }
+
+    const profileData = {
+      member: memberId,
+      address: req.body.address,
+      phone: req.body.phone,
+    };
+
+    const profile = await MemberProfile.create(profileData);
+
+    res.status(201).json({ success: true, profile });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message || err });
+  }
+}
+
+// Update Member Profile
+async function update(req, res) {
+  try {
+    const memberId = req.user._id;
+    const profileData = {
+      address: req.body.address,
+      phone: req.body.phone,
+    };
+
+    const profile = await MemberProfile.findOneAndUpdate(
+      { member: memberId },
+      profileData,
+      { new: true, runValidators: true }
+    );
+
+    if (!profile) {
+      return res.status(404).json({ success: false, message: 'Profile not found.' });
+    }
+
+    res.status(200).json({ success: true, profile });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message || err });
+  }
+}
 - Ensure the same profile cannot be assigned to multiple members.
 
 ## Solution: 
@@ -40,12 +89,12 @@ if(isBorrowedActive){
 
 # Task 3: Borrow Record Management (One-to-Many)
 
-- Allow members to borrow books.
-- Ensure that the availableCopies of the book decreases when a book is borrowed.
-- Allow returning books and update the BorrowRecord accordingly.
-- When a book is returned, the availableCopies should increase.
-- If a book is returned after 14 days of borrowing, mark the status as "Overdue".
-- Only members with an "Active" membership can borrow books.
+1. Allow members to borrow books
+2. Ensure that the availableCopies of the book decreases when a book is borrowed.
+3. Allow returning books and update BorrowRecord accordingly
+4. When a book is returned, the availableCopies should increase.
+5. If a book is returned after 14 days of borrowing, mark the status as "Overdue".
+6. Only members with an "Active" membership can borrow books.
 
 ## Solution :
 
@@ -99,6 +148,64 @@ const borrowRecordSchema = new mongoose.Schema(
   }
 );
 
+async function borrowBook(memberId, bookId) {
+  const member = await Member.findById(memberId);
+  if (!member || member.status !== 'Active') {
+    throw new Error('Member not found or not active');
+  }
+
+  // Check if book exists and has available copies
+  const book = await Book.findById(bookId);
+  if (!book || book.availableCopies < 1) {
+    throw new Error('Book not available');
+  }
+
+  // Create borrow record
+  const borrowRecord = new BorrowRecord({
+    member_id: memberId,
+    book_id: bookId,
+    borrowDate: new Date(),
+    status: 'Borrowed'
+  });
+  await borrowRecord.save();
+
+  // Decrease availableCopies
+  book.availableCopies = book.availableCopies - 1;
+  await book.save();
+
+  return borrowRecord;
+}
+
+async function returnBook(borrowRecordId) {
+
+  const record = await BorrowRecord.findById(borrowRecordId);
+  if (!record || record.status !== 'Borrowed') {
+    throw new Error('Borrow record not found or already returned');
+  }
+
+  // Set return date
+  record.returnDate = new Date();
+
+  // Check if overdue (after 14 days)
+  const borrowTime = record.borrowDate;
+  const now = new Date();
+  const diffDays = Math.floor((now - borrowTime) / (1000 * 60 * 60 * 24));
+  if (diffDays > 14) {
+    record.status = 'Overdue';
+  } else {
+    record.status = 'Returned';
+  }
+  await record.save();
+
+  // Increase availableCopies
+  const book = await Book.findById(record.book_id);
+  if (book) {
+    book.availableCopies = book.availableCopies + 1;
+    await book.save();
+  }
+
+  return record;
+}
 
 # Task 4: Validations
 
